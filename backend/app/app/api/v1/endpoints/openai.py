@@ -1,11 +1,13 @@
+from app.api.deps import get_async_qdrant_client
 from app.schemas.common_schema import IChatCompletionResponse
 from app.schemas.response_schema import IPostResponseBase, create_response
-from app.utils.chatgpt import num_tokens_from_messages
+from app.utils.chatgpt import get_embedding, num_tokens_from_messages
 from asyncer import asyncify
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.utils.fastapi_globals import g
 import openai
 from pydantic import BaseModel
+from qdrant_client import QdrantClient
 
 router = APIRouter()
 
@@ -40,21 +42,17 @@ class Input(BaseModel):
 
 @router.post("/num_tokens_from_messages")
 async def get_num_tokens_from_messages(
-    body: Input,
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": "You are a helpful help desk assistant."},
+        {"role": "user", "content": "Which is the capital of Ecuador?"},
+    ],
+    client: QdrantClient = Depends(get_async_qdrant_client)
 ) -> IPostResponseBase[str]:
-    data = num_tokens_from_messages(
-        messages=[
-            {"role": "system", "content": "You are a helpful help desk assistant."},
-            {"role": "user", "content": "Which is the capital of Ecuador?"},
-            {
-                "role": "assistant",
-                "content": "The capital of Ecuador is Quito.",
-            },
-            {"role": "user", "content": "Responde lo mismo pero en español"},
-        ]
-    )
-    print("data", data)
-    return create_response(data="hi")
+    data = num_tokens_from_messages(messages=messages)
+    embedding = await asyncify(get_embedding)(text="I have bought several of the Vitality canned")
+    print("embedding", len(embedding))
+
+    return create_response(data=data)
 
 
 @router.post("/")
@@ -75,7 +73,7 @@ async def create_completition(
                 "role": "assistant",
                 "content": "The capital of Ecuador is Quito.",
             },
-            {"role": "user", "content": "Responde lo mismo pero en español"},
+            {"role": "user", "content": f"{body.prompt}"},
         ],
     )
 

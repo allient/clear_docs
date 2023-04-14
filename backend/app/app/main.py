@@ -6,6 +6,7 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from contextlib import asynccontextmanager
 from app.utils.fastapi_globals import GlobalsMiddleware
 from app.core.config import settings
+from qdrant_client.models import Distance, VectorParams
 import openai
 
 

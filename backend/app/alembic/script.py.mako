@@ -19,7 +19,8 @@ depends_on = ${repr(depends_on)}
 
 
 def upgrade():
-    op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm") 
+    op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     ${upgrades if upgrades else "pass"}
 
 

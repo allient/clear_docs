@@ -1,3 +1,4 @@
+import openai
 import tiktoken
 
 
@@ -24,3 +25,7 @@ def num_tokens_from_messages(messages: list[dict[str, str]], model: str = "gpt-3
             f"""num_tokens_from_messages() is not presently implemented for model {model}.
   See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
         )
+
+def get_embedding(text, model="text-embedding-ada-002"):
+   text = text.replace("\n", " ")
+   return openai.Embedding.create(input = [text], model=model)['data'][0]['embedding']

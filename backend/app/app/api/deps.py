@@ -9,9 +9,11 @@ from app import crud
 from app.core import security
 from app.core.config import settings
 from app.db.session import SessionLocal
+from qdrant_client import QdrantClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.schemas.common_schema import IMetaGeneral, TokenType
 import redis.asyncio as aioredis
+from qdrant_client.http.api_client import AsyncApis
 from redis.asyncio import Redis
 
 
@@ -34,6 +36,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:
         yield session
 
+async def get_async_qdrant_client():
+    qdrant_url = f'http://{settings.QDRANT_HOST}:6333'
+    async with AsyncApis(qdrant_url) as apis:
+        yield apis
+
+def get_sync_qdrant_client() -> QdrantClient:
+    client = QdrantClient(host=settings.QDRANT_HOST, port=6333)
+    return client
 
 async def get_general_meta() -> IMetaGeneral:
     current_roles = await crud.role.get_multi(skip=0, limit=100)

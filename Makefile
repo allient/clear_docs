@@ -86,7 +86,7 @@ create-celery-db:
 	
 
 init-db:
-	docker compose -f docker-compose-dev.yml exec fastapi_server python app/initial_data.py && \
+	docker compose -f docker-compose-dev.yml exec backend_cdocs python app/initial_data.py && \
 	echo "Initial data created." 
 
 formatter:
