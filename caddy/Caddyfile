@@ -1,0 +1,13 @@
+{
+  email custom@domain.com
+}
+
+fastapi.{$EXT_ENDPOINT1}:80, fastapi.{$LOCAL_1}:80, fastapi.{$LOCAL_2}:80, :80 {
+  reverse_proxy backend_cdocs:8000
+}
+
+static.{$EXT_ENDPOINT1}:80, static.{$LOCAL_1}:80, static.{$LOCAL_2}:80 {
+  root * /code/static
+  file_server browse
+}
+

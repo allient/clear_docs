@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  backend_cdocs:
+    container_name: backend_cdocs
+    build: ./backend
+    restart: always
+    command: "sh -c 'alembic upgrade head && uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000'"
+    #command: "sh -c 'alembic upgrade head && gunicorn -w 3 -k uvicorn.workers.UvicornWorker app.main:app  --bind 0.0.0.0:8000 --preload --log-level=debug --timeout 120'"
+    volumes:
+      - ./backend/app:/code
+    expose:
+      - 8000
+    env_file: ".env"
+    depends_on:
+      - database_cdocs
+
+  database_cdocs:
+    image: bitnami/postgresql:13.3.0
+    restart: always
+    container_name: database_cdocs
+    env_file: ".env"
+    user: root
+    volumes:
+      - ./db_docker:/bitnami/postgresql
+    ports:
+      - 5454:5432 # Remove this on production
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USERNAME=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DATABASE=${DATABASE_NAME}
+      - POSTGRES_HOST_AUTH_METHOD= "trust"
+
+  redis_cdocs:
+    image: redis:alpine
+    container_name: redis_cdocs
+    restart: always
+    expose:
+      - 6379
+    env_file: .env
+
+
+  caddy_reverse_proxy_cdocs:
+    container_name: caddy_reverse_proxy_cdocs
+    image: caddy:alpine
+    restart: always
+    ports:
+      - 80:80
+      - 8080:8080
+      - 443:443
+    environment:
+      - EXT_ENDPOINT1=${EXT_ENDPOINT1}
+      - LOCAL_1=${LOCAL_1}
+      - LOCAL_2=${LOCAL_2}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./static:/code/static
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

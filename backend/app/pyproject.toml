@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["jonra1993 <jonathan.vargas@jrtec.io>"]
+
+[tool.black]
+line-length = 88
+target-version = [ "py310", "py311" ]
+exclude = "((.eggs | .git | .pytest_cache | build | dist))"
+
+[tool.ruff]
+line-length = 88
+exclude = [".git", "__pycache__", ".mypy_cache", ".pytest_cache"]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    # "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "B904",
+    "B006",    
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+alembic = "^1.10.3"
+fastapi = {extras = ["all"], version = "^0.95.0"}
+sqlmodel = "^0.0.8"
+python-jose = "^3.3.0"
+cryptography = "^40.0.1"
+passlib = "^1.7.4"
+sqlalchemy-utils = "^0.41.0"
+sqlalchemy = "1.4.41"
+fastapi-pagination = {extras = ["sqlalchemy"], version = "^0.12.1"}
+fastapi-cache2 = "^0.2.1"
+watchfiles = "^0.19.0"
+fastapi-async-sqlalchemy = "0.3.14"
+openai = "^0.27.4"
+redis = "^4.5.4"
+asyncpg = "^0.27.0"
+asyncer = "^0.0.2"
+tiktoken = "^0.3.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^5.2"
+black = "^23.1.0"
+ruff = "^0.0.256"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

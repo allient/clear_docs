@@ -127,3 +127,16 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+db_docker
+minio
+
+.sonarqube/*
+.scannerwork
+.ruff_cache
+sonarqube
+sonarqube/extensions
+sonarqube/data
+sonarqube/logs
+
+.terraform
