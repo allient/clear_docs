@@ -1,13 +1,11 @@
-from app.api.deps import get_async_qdrant_client
 from app.schemas.common_schema import IChatCompletionResponse
 from app.schemas.response_schema import IPostResponseBase, create_response
 from app.utils.chatgpt import get_embedding, num_tokens_from_messages
 from asyncer import asyncify
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from app.utils.fastapi_globals import g
 import openai
 from pydantic import BaseModel
-from qdrant_client import QdrantClient
 
 router = APIRouter()
 
@@ -45,8 +43,7 @@ async def get_num_tokens_from_messages(
     messages: list[dict[str, str]] = [
         {"role": "system", "content": "You are a helpful help desk assistant."},
         {"role": "user", "content": "Which is the capital of Ecuador?"},
-    ],
-    client: QdrantClient = Depends(get_async_qdrant_client)
+    ]
 ) -> IPostResponseBase[str]:
     data = num_tokens_from_messages(messages=messages)
     embedding = await asyncify(get_embedding)(text="I have bought several of the Vitality canned")

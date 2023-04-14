@@ -36,11 +36,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:
         yield session
 
-async def get_async_qdrant_client():
-    qdrant_url = f'http://{settings.QDRANT_HOST}:6333'
-    async with AsyncApis(qdrant_url) as apis:
-        yield apis
-
 def get_sync_qdrant_client() -> QdrantClient:
     client = QdrantClient(host=settings.QDRANT_HOST, port=6333)
     return client

@@ -94,11 +94,3 @@ async def init_db(db_session: AsyncSession) -> None:
     except Exception as e:
         print(e)
 
-    # new_vector =get_embedding(text="Good food")
-    # hits = qdrant_client.search(
-    #     collection_name="my_docs",
-    #     query_vector=new_vector,
-    #     limit=3
-    # )
-    # for hit in hits:
-    #     print(hit.payload, "score:", hit.score)
