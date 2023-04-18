@@ -1,10 +1,9 @@
 from pydantic import BaseModel
 from enum import Enum
-from app.schemas.role_schema import IRoleRead
 
 
 class IMetaGeneral(BaseModel):
-    roles: list[IRoleRead]
+    pass
 
 
 class IOrderEnum(str, Enum):
@@ -17,7 +16,6 @@ class TokenType(str, Enum):
     REFRESH = "refresh_token"
 
 
-
 class IMessage(BaseModel):
     role: str
     content: str
@@ -28,14 +26,16 @@ class IChoice(BaseModel):
     message: IMessage
     finish_reason: str
 
+
 class IUsage(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
 
-class IChatCompletionResponse(BaseModel):    
+
+class IChatCompletionResponse(BaseModel):
     created: int
     choices: list[IChoice]
     usage: IUsage
     id: str
-    object: str    
+    object: str

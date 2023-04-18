@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: str
     QDRANT_HOST: str
+    QDRANT_CLOUD_URL: AnyHttpUrl
+    QDRANT_CLOUD_API_KEY: str
+    SUPERTOKENS_CORE_URI: str
+    SUPERTOKENS_CORE_API_KEY: str
     DB_POOL_SIZE = 83
     WEB_CONCURRENCY = 9
     POOL_SIZE = max(DB_POOL_SIZE // WEB_CONCURRENCY, 5)

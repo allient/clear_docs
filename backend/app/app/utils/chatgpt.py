@@ -2,7 +2,9 @@ import openai
 import tiktoken
 
 
-def num_tokens_from_messages(messages: list[dict[str, str]], model: str = "gpt-3.5-turbo-0301"):
+def num_tokens_from_messages(
+    messages: list[dict[str, str]], model: str = "gpt-3.5-turbo-0301"
+):
     """Returns the number of tokens used by a list of messages."""
     try:
         encoding = tiktoken.encoding_for_model(model)
@@ -26,6 +28,7 @@ def num_tokens_from_messages(messages: list[dict[str, str]], model: str = "gpt-3
   See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
         )
 
+
 def get_embedding(text, model="text-embedding-ada-002"):
-   text = text.replace("\n", " ")
-   return openai.Embedding.create(input = [text], model=model)['data'][0]['embedding']
+    text = text.replace("\n", " ")
+    return openai.Embedding.create(input=[text], model=model)["data"][0]["embedding"]

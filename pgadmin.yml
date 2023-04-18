@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  pgadmin:
-    container_name: pgadmin
+  pgadmin_cdocs:
+    container_name: pgadmin_cdocs
     image: dpage/pgadmin4
     restart: always
     volumes:

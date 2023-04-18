@@ -1,15 +1,11 @@
-from app.api.deps import get_sync_qdrant_client
-from app.utils.chatgpt import get_embedding
 import openai
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app import crud
 from app.schemas.role_schema import IRoleCreate
 from app.core.config import settings
 from app.schemas.user_schema import IUserCreate
 from qdrant_client.models import Distance, VectorParams
-from qdrant_client import models
+from qdrant_client import QdrantClient, models
 import pandas as pd
-import tiktoken
 
 
 openai.api_key = settings.OPENAI_API_KEY
@@ -57,10 +53,16 @@ users: list[dict[str, str | IUserCreate]] = [
 async def init_db(db_session: AsyncSession) -> None:
     input_datapath = "app/data/fine_food_reviews_with_embeddings_1k.csv"  # to save space, we provide a pre-filtered dataset
     df = pd.read_csv(input_datapath, index_col=0)
-    print(len(df))
 
+    is_cloud_qdrant = True
+    qdrant_client = (
+        QdrantClient(
+            url=settings.QDRANT_CLOUD_URL, api_key=settings.QDRANT_CLOUD_API_KEY
+        )
+        if is_cloud_qdrant
+        else QdrantClient(host=settings.QDRANT_HOST)
+    )
 
-    qdrant_client = get_sync_qdrant_client()
     try:
         qdrant_client.recreate_collection(
             collection_name="my_docs",
@@ -69,7 +71,7 @@ async def init_db(db_session: AsyncSession) -> None:
 
         records = []
         for idx, row in df.iterrows():
-            vector = [float(i) for i in row["embedding"].strip('[]').split(',')]
+            vector = [float(i) for i in row["embedding"].strip("[]").split(",")]
             records.append(
                 models.Record(
                     id=idx,
@@ -93,4 +95,3 @@ async def init_db(db_session: AsyncSession) -> None:
 
     except Exception as e:
         print(e)
-

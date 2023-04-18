@@ -3,3 +3,6 @@ This project uses ChatGPT to to convert hard documents like laws, contract, insu
 
 
 https://osschat.io/
+https://qdrant.tech/articles/neural-search-tutorial/
+
+

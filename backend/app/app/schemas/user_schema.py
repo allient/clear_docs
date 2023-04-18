@@ -1,15 +1,12 @@
 from app.utils.partial import optional
-from app.models.user_model import UserBase
 from uuid import UUID
 from enum import Enum
-from .role_schema import IRoleRead
+
+from app.models.user_model import UserBase
 
 
 class IUserCreate(UserBase):
-    password: str | None
-
-    class Config:
-        hashed_password = None
+    id: UUID
 
 
 # All these fields are optional
@@ -20,7 +17,6 @@ class IUserUpdate(UserBase):
 
 class IUserRead(UserBase):
     id: UUID
-    role: IRoleRead | None = None
 
 
 class IUserStatus(str, Enum):

@@ -33,14 +33,14 @@ services:
       - POSTGRES_DATABASE=${DATABASE_NAME}
       - POSTGRES_HOST_AUTH_METHOD= "trust"
 
-  qdrant_cdocs:
-    image: qdrant/qdrant
-    container_name: qdrant_cdocs
-    restart: always
-    volumes:
-      - ./db_qdrant:/qdrant/storage
-    expose:
-      - 6333
+  # qdrant_cdocs:
+  #   image: qdrant/qdrant
+  #   container_name: qdrant_cdocs
+  #   restart: always
+  #   volumes:
+  #     - ./db_qdrant:/qdrant/storage
+  #   expose:
+  #     - 6333
 
   redis_cdocs:
     image: redis:alpine

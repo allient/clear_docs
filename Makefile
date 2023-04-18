@@ -115,8 +115,8 @@ run-sonar-scanner:
 	docker run --rm -v "${PWD}/backend:/usr/src" sonarsource/sonar-scanner-cli -X
 
 add-dev-migration:
-	docker compose -f docker-compose-dev.yml exec fastapi_server alembic revision --autogenerate && \
-	docker compose -f docker-compose-dev.yml exec fastapi_server alembic upgrade head && \
+	docker compose -f docker-compose-dev.yml exec backend_cdocs alembic revision --autogenerate && \
+	docker compose -f docker-compose-dev.yml exec backend_cdocs alembic upgrade head && \
 	echo "Migration added and applied."
 
 run-pgadmin:

@@ -46,7 +46,9 @@ async def get_num_tokens_from_messages(
     ]
 ) -> IPostResponseBase[str]:
     data = num_tokens_from_messages(messages=messages)
-    embedding = await asyncify(get_embedding)(text="I have bought several of the Vitality canned")
+    embedding = await asyncify(get_embedding)(
+        text="I have bought several of the Vitality canned"
+    )
     print("embedding", len(embedding))
 
     return create_response(data=data)
