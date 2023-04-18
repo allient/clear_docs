@@ -1,79 +1,66 @@
+from app.models.user_model import User
 from app.schemas.common_schema import IChatCompletionResponse
 from app.schemas.response_schema import IPostResponseBase, create_response
 from app.utils.chatgpt import get_embedding, num_tokens_from_messages
 from asyncer import asyncify
-from fastapi import APIRouter
-from app.utils.fastapi_globals import g
+from fastapi import APIRouter, Depends
 import openai
 from pydantic import BaseModel
+from fastapi_limiter.depends import RateLimiter
+from app.api.deps import get_current_user
 
 router = APIRouter()
-
-
-@router.post("/sentiment_analysis")
-async def sentiment_analysis_prediction(
-    prompt: str = "Fastapi is awesome",
-) -> IPostResponseBase:
-    """
-    Gets a sentimental analysis predition using a NLP model from transformers libray
-    """
-    sentiment_model = g.sentiment_model
-    prediction = sentiment_model(prompt)
-    return create_response(message="Prediction got succesfully", data=prediction)
-
-
-@router.post("/text_generation")
-async def text_generation_prediction(
-    prompt: str = "Superman is awesome because",
-) -> IPostResponseBase:
-    """
-    Sync text generation using a NLP model from transformers libray (Not reommended for long time inferences)
-    """
-    text_generator_model = g.text_generator_model
-    prediction = text_generator_model(prompt)
-    return create_response(message="Prediction got succesfully", data=prediction)
 
 
 class Input(BaseModel):
     prompt: str
 
 
-@router.post("/num_tokens_from_messages")
+@router.post(
+    "/num_tokens_from_messages",
+    dependencies=[
+        Depends(RateLimiter(times=200, hours=24)),
+    ],
+)
 async def get_num_tokens_from_messages(
     messages: list[dict[str, str]] = [
         {"role": "system", "content": "You are a helpful help desk assistant."},
         {"role": "user", "content": "Which is the capital of Ecuador?"},
-    ]
+    ],
+    current_user: User = Depends(get_current_user),
 ) -> IPostResponseBase[str]:
     data = num_tokens_from_messages(messages=messages)
-    embedding = await asyncify(get_embedding)(
-        text="I have bought several of the Vitality canned"
-    )
-    print("embedding", len(embedding))
+    # embedding = await asyncify(get_embedding)(
+    #     text="I have bought several of the Vitality canned", user_id=current_user.id
+    # )
+    # print("embedding", len(embedding))
 
     return create_response(data=data)
 
 
-@router.post("/")
-async def create_completition(
+@router.post(
+    "/text_generation",
+    dependencies=[
+        Depends(RateLimiter(times=200, hours=24)),
+    ],
+)
+async def text_generation_prediction(
     body: Input,
+    current_user: User = Depends(get_current_user),
 ) -> IPostResponseBase[IChatCompletionResponse]:
     """
-    An example "Hello world" FastAPI route.
+    Async text generation using a NLP model from transformers libray (Not reommended for long time inferences)
     """
     response: IChatCompletionResponse = await asyncify(openai.ChatCompletion.create)(
         model="gpt-3.5-turbo",
         temperature=0.1,
-        user="001",
+        user=str(current_user.id),
         messages=[
             {"role": "system", "content": "You are a helpful help desk assistant."},
             {"role": "user", "content": "Which is the capital of Ecuador?"},
-            {
-                "role": "assistant",
-                "content": "The capital of Ecuador is Quito.",
-            },
+            {"role": "assistant", "content": "The capital of Ecuador is Quito."},
             {"role": "user", "content": f"{body.prompt}"},
         ],
     )
 
-    return create_response(data=response)
+    return create_response(message="Prediction got succesfully", data=response)

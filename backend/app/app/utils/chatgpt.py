@@ -1,3 +1,4 @@
+from uuid import UUID
 import openai
 import tiktoken
 
@@ -29,6 +30,7 @@ def num_tokens_from_messages(
         )
 
 
-def get_embedding(text, model="text-embedding-ada-002"):
+def get_embedding(text, model="text-embedding-ada-002", user_id: str | UUID = "001"):
     text = text.replace("\n", " ")
-    return openai.Embedding.create(input=[text], model=model)["data"][0]["embedding"]
+    user_id = str(user_id) if isinstance(user_id, UUID) else user_id
+    return openai.Embedding.create(input=[text], model=model, user=user_id)["data"][0]["embedding"]

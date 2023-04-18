@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from uuid import UUID
 from app.utils.neural_searcher import NeuralSearcher
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from app.utils.token import get_valid_tokens
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
@@ -64,60 +64,8 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
     return get_searcher
 
 
-async def get_general_meta() -> IMetaGeneral:
-    current_roles = await crud.role.get_multi(skip=0, limit=100)
-    return IMetaGeneral(roles=current_roles)
-
-
-def get_current_user(required_roles: list[str] = None) -> User:
-    async def current_user(
-        token: str = Depends(reusable_oauth2),
-        redis_client: Redis = Depends(get_redis_client),
-    ) -> User:
-        try:
-            payload = jwt.decode(
-                token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
-            )
-        except (jwt.JWTError, ValidationError):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Could not validate credentials",
-            )
-        user_id = payload["sub"]
-        valid_access_tokens = await get_valid_tokens(
-            redis_client, user_id, TokenType.ACCESS
-        )
-        if valid_access_tokens and token not in valid_access_tokens:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Could not validate credentials",
-            )
-        user: User = await crud.user.get(id=user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not user.is_active:
-            raise HTTPException(status_code=400, detail="Inactive user")
-
-        if required_roles:
-            is_valid_role = False
-            for role in required_roles:
-                if role == user.role.name:
-                    is_valid_role = True
-
-            if not is_valid_role:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"""Role "{required_roles}" is required for this action""",
-                )
-
-        return user
-
-    return current_user
-
-
-async def current_user1(
-    request=Depends(oauth2_scheme),
+async def get_current_user(
+    _request = Depends(oauth2_scheme),
     session_: SessionContainer = Depends(verify_session()),
 ) -> User:
     user_id: UUID = session_.get_user_id()

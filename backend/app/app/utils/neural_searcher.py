@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 import openai
 from qdrant_client import QdrantClient
 
@@ -30,15 +31,16 @@ class NeuralSearcher:
         self.openai = openai
         self.openai.api_key = openai_api_key
 
-    def get_embedding(self, text):
+    def get_embedding(self, text: str, user_id: str | UUID):
         text = text.replace("\n", " ")
-        return self.openai.Embedding.create(input=[text], model=self.embedding_model)[
+        user_id = str(user_id) if isinstance(user_id, UUID) else user_id
+        return self.openai.Embedding.create(input=[text], model=self.embedding_model, user=user_id)[
             "data"
         ][0]["embedding"]
 
-    def search(self, text: str) -> list[dict[str, str]]:
+    def search(self, text: str, user_id: str | UUID ="001") -> list[dict[str, str]]:
         # Convert text query into vector
-        vector = self.get_embedding(text=text)
+        vector = self.get_embedding(text=text, user_id=user_id)
 
         # Use `vector` for search for closest vectors in the collection
         search_result = self.qdrant_client.search(
