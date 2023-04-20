@@ -55,6 +55,7 @@ pandas = "^2.0.0"
 fastapi-limiter = "^0.1.5"
 fastapi-users = {extras = ["oauth", "redis", "sqlalchemy"], version = "^10.4.2"}
 supertokens-python = "^0.12.6"
+langchain = "^0.0.143"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^5.2"

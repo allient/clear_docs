@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from uuid import UUID
+from pydantic import BaseModel, validator
 from enum import Enum
 
 
@@ -39,3 +40,27 @@ class IChatCompletionResponse(BaseModel):
     usage: IUsage
     id: str
     object: str
+
+class IChatResponse(BaseModel):
+    """Chat response schema."""
+
+    sender: str
+    message: str
+    type: str
+
+    @validator("sender")
+    def sender_must_be_bot_or_you(cls, v):
+        if v not in ["bot", "you"]:
+            raise ValueError("sender must be bot or you")
+        return v
+
+    @validator("type")
+    def validate_message_type(cls, v):
+        if v not in ["start", "stream", "end", "error", "info"]:
+            raise ValueError("type must be start, stream or end")
+        return v
+
+class IUserMessage(BaseModel):
+    """User message schema."""
+    user_id: UUID
+    message: str

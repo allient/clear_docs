@@ -1,9 +1,21 @@
+import logging
 from app import crud
 from typing import Any
-from app.api.deps import get_redis_client
+from app.api.deps import get_redis_client, get_sync_qdrant_client
 from app.core import security
+from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.schemas.user_schema import IUserCreate
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from app.utils.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
+from app.utils.query_data import get_chain
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi_pagination import add_pagination
 from pydantic import ValidationError
 from starlette.middleware.cors import CORSMiddleware
@@ -28,16 +40,18 @@ from supertokens_python.recipe.emailpassword.interfaces import (
 from supertokens_python.recipe.emailpassword.types import FormField
 from supertokens_python.recipe.usermetadata.asyncio import update_user_metadata
 from supertokens_python.recipe.session.framework.fastapi import verify_session
+from langchain.vectorstores import VectorStore, Qdrant
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 
 async def user_id_identifier(request: Request):
     verify_session_fn = verify_session(session_required=False)
     session = await verify_session_fn(request=request)
 
-    if session is not None: 
+    if session is not None:
         user_id = session.get_user_id()
         return user_id + ":" + request.scope["path"]
-        
+
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0]
@@ -68,14 +82,15 @@ def override_email_password_apis(original_implementation: APIInterface):
             last_name = extract_field(form_fields, "last_name")
             email = response.user.email
             user_id = response.user.user_id
-            
-            await update_user_metadata(user_id, {
-                "first_name": first_name,
-                "last_name": last_name
-            })
-            
+
+            await update_user_metadata(
+                user_id, {"first_name": first_name, "last_name": last_name}
+            )
+
             async with db():
-                user = IUserCreate(first_name=first_name, last_name=last_name, email=email, id=user_id)
+                user = IUserCreate(
+                    first_name=first_name, last_name=last_name, email=email, id=user_id
+                )
                 new_user = await crud.user.create(obj_in=user)
                 print("new_user", new_user)
 
@@ -134,7 +149,7 @@ init(
     ),
     framework="fastapi",
     recipe_list=[
-        session.init(),        
+        session.init(),
         usermetadata.init(),
         dashboard.init(),
         emailpassword.init(
@@ -170,6 +185,57 @@ async def root():
     An example "Hello world" FastAPI route.
     """
     return {"message": "Hello World"}
+
+
+@app.websocket("/chat")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    vector_client = get_sync_qdrant_client()
+    embeddings = OpenAIEmbeddings()
+    vectorstore = Qdrant(
+        client=vector_client,
+        collection_name="my_docs",
+        embedding_function=embeddings.embed_query,
+    )
+
+    question_handler = QuestionGenCallbackHandler(websocket)
+    stream_handler = StreamingLLMCallbackHandler(websocket)
+    chat_history = []
+    qa_chain = get_chain(vectorstore, question_handler, stream_handler)
+    # Use the below line instead of the above line to enable tracing
+    # Ensure `langchain-server` is running
+    # qa_chain = get_chain(vectorstore, question_handler, stream_handler, tracing=True)
+
+    while True:
+        try:
+            # Receive and send back the client message
+            data = await websocket.receive_json()
+            user_message = IUserMessage.parse_obj(data)
+            resp = IChatResponse(sender="you", message=user_message.message, type="stream")
+            await websocket.send_json(resp.dict())
+
+            # # Construct a response
+            start_resp = IChatResponse(sender="bot", message="", type="start")
+            await websocket.send_json(start_resp.dict())
+
+            result = await qa_chain.acall(
+                {"question": user_message.message, "chat_history": chat_history}
+            )
+            chat_history.append((user_message.message, result["answer"]))
+
+            end_resp = IChatResponse(sender="bot", message="", type="end")
+            await websocket.send_json(end_resp.dict())
+        except WebSocketDisconnect:
+            logging.info("websocket disconnect")
+            break
+        except Exception as e:
+            logging.error(e)
+            resp = IChatResponse(
+                sender="bot",
+                message="Sorry, something went wrong. Try again.",
+                type="error",
+            )
+            await websocket.send_json(resp.dict())
 
 
 # Add Routers

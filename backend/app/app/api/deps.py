@@ -19,6 +19,8 @@ from redis.asyncio import Redis
 from app.utils.auth_cookies import OAuth2PasswordBearerWithCookie
 from supertokens_python.recipe.session import SessionContainer
 from supertokens_python.recipe.session.framework.fastapi import verify_session
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.chat_models import ChatOpenAI
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -49,6 +51,16 @@ def get_sync_qdrant_client() -> QdrantClient:
     return client
 
 
+def get_langchain_embeddings() -> OpenAIEmbeddings:
+    embeddings: OpenAIEmbeddings = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
+    return embeddings
+
+def get_chat_openai() -> ChatOpenAI:
+    chat = ChatOpenAI(temperature=0, openai_api_key=settings.OPENAI_API_KEY, model_name="gpt-3.5-turbo")
+    return chat
+
+
+
 def get_neural_searcher(collection_name: str) -> NeuralSearcher:
     def get_searcher() -> NeuralSearcher:
         searcher: NeuralSearcher = NeuralSearcher(
@@ -65,7 +77,7 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
 
 
 async def get_current_user(
-    _request = Depends(oauth2_scheme),
+    _request=Depends(oauth2_scheme),
     session_: SessionContainer = Depends(verify_session()),
 ) -> User:
     user_id: UUID = session_.get_user_id()
