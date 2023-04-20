@@ -1,4 +1,6 @@
+import json
 import logging
+from uuid import UUID
 from app import crud
 from typing import Any
 from app.api.deps import get_redis_client, get_sync_qdrant_client
@@ -41,24 +43,29 @@ from supertokens_python.recipe.emailpassword.interfaces import (
 from supertokens_python.recipe.emailpassword.types import FormField
 from supertokens_python.recipe.usermetadata.asyncio import update_user_metadata
 from supertokens_python.recipe.session.framework.fastapi import verify_session
-from langchain.vectorstores import VectorStore, Qdrant
+from langchain.vectorstores import Qdrant
 from langchain.embeddings.openai import OpenAIEmbeddings
-from fastapi_limiter.depends import WebSocketRateLimiter
+from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
 
 
 async def user_id_identifier(request: Request):
-    verify_session_fn = verify_session(session_required=False)
-    session = await verify_session_fn(request=request)
+    if request.scope["type"] == "http":
+        verify_session_fn = verify_session(session_required=False)
+        session = await verify_session_fn(request=request)
 
-    if session is not None:
-        user_id = session.get_user_id()
-        return user_id + ":" + request.scope["path"]
+        if session is not None:
+            user_id = session.get_user_id()
+            return user_id + ":" + request.scope["path"]
 
+    if request.scope["type"] == "websocket":
+        return request.scope["path"]
+        
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0]
 
-    return request.client.host + ":" + request.scope["path"]
+    ip = request.client.host    
+    return ip + ":" + request.scope["path"]
 
 
 def override_email_password_apis(original_implementation: APIInterface):
@@ -189,10 +196,10 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.websocket("/chat")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/chat/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
     await websocket.accept()
-    ws_ratelimit = WebSocketRateLimiter(times=1, seconds=5)
+    ws_ratelimit = WebSocketRateLimiter(times=2, hours=24)
     vector_client = get_sync_qdrant_client()
     embeddings = OpenAIEmbeddings()
     vectorstore = Qdrant(
@@ -213,9 +220,10 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             # Receive and send back the client message
             data = await websocket.receive_json()
-            #await ws_ratelimit(websocket)
+            await ws_ratelimit(websocket)
             user_message = IUserMessage.parse_obj(data)
-            message_id = str(uuid7())
+            user_message.user_id = user_id
+            
             resp = IChatResponse(
                 sender="you",
                 message=user_message.message,

@@ -73,5 +73,5 @@ class IChatResponse(BaseModel):
 class IUserMessage(BaseModel):
     """User message schema."""
 
-    user_id: UUID
+    user_id: UUID | None
     message: str
