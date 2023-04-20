@@ -7,6 +7,7 @@ from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.schemas.user_schema import IUserCreate
 from app.utils.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
 from app.utils.query_data import get_chain
+from app.utils.uuid6 import uuid7
 from fastapi import (
     Depends,
     FastAPI,
@@ -42,6 +43,7 @@ from supertokens_python.recipe.usermetadata.asyncio import update_user_metadata
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 from langchain.vectorstores import VectorStore, Qdrant
 from langchain.embeddings.openai import OpenAIEmbeddings
+from fastapi_limiter.depends import WebSocketRateLimiter
 
 
 async def user_id_identifier(request: Request):
@@ -190,6 +192,7 @@ async def root():
 @app.websocket("/chat")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    ws_ratelimit = WebSocketRateLimiter(times=1, seconds=5)
     vector_client = get_sync_qdrant_client()
     embeddings = OpenAIEmbeddings()
     vectorstore = Qdrant(
@@ -210,20 +213,37 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             # Receive and send back the client message
             data = await websocket.receive_json()
+            #await ws_ratelimit(websocket)
             user_message = IUserMessage.parse_obj(data)
-            resp = IChatResponse(sender="you", message=user_message.message, type="stream")
+            message_id = str(uuid7())
+            resp = IChatResponse(
+                sender="you",
+                message=user_message.message,
+                type="stream",
+                message_id=str(uuid7()),
+                id=str(uuid7()),
+            )
             await websocket.send_json(resp.dict())
 
             # # Construct a response
-            start_resp = IChatResponse(sender="bot", message="", type="start")
+            start_resp = IChatResponse(
+                sender="bot", message="", type="start", message_id="", id=""
+            )
             await websocket.send_json(start_resp.dict())
 
             result = await qa_chain.acall(
                 {"question": user_message.message, "chat_history": chat_history}
             )
             chat_history.append((user_message.message, result["answer"]))
-
-            end_resp = IChatResponse(sender="bot", message="", type="end")
+            question_handler.update_message_id()
+            stream_handler.update_message_id()
+            end_resp = IChatResponse(
+                sender="bot",
+                message="",
+                type="end",
+                message_id=str(uuid7()),
+                id=str(uuid7()),
+            )
             await websocket.send_json(end_resp.dict())
         except WebSocketDisconnect:
             logging.info("websocket disconnect")
@@ -231,6 +251,8 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as e:
             logging.error(e)
             resp = IChatResponse(
+                message_id="",
+                id="",
                 sender="bot",
                 message="Sorry, something went wrong. Try again.",
                 type="error",
