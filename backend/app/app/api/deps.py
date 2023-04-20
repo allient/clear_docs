@@ -47,7 +47,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 def get_sync_qdrant_client() -> QdrantClient:
-    client: QdrantClient = QdrantClient(host=settings.QDRANT_HOST, port=6333)
+    client: QdrantClient = QdrantClient(url=settings.QDRANT_CLOUD_URL, api_key=settings.QDRANT_CLOUD_API_KEY)
     return client
 
 

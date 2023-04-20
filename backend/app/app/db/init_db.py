@@ -1,53 +1,12 @@
 import openai
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.role_schema import IRoleCreate
 from app.core.config import settings
 from app.schemas.user_schema import IUserCreate
 from qdrant_client.models import Distance, VectorParams
 from qdrant_client import QdrantClient, models
 import pandas as pd
 
-
 openai.api_key = settings.OPENAI_API_KEY
-
-roles: list[IRoleCreate] = [
-    IRoleCreate(name="admin", description="This the Admin role"),
-    IRoleCreate(name="manager", description="Manager role"),
-    IRoleCreate(name="user", description="User role"),
-]
-
-users: list[dict[str, str | IUserCreate]] = [
-    {
-        "data": IUserCreate(
-            first_name="Admin",
-            last_name="FastAPI",
-            password=settings.FIRST_SUPERUSER_PASSWORD,
-            email=settings.FIRST_SUPERUSER_EMAIL,
-            is_superuser=True,
-        ),
-        "role": "admin",
-    },
-    {
-        "data": IUserCreate(
-            first_name="Manager",
-            last_name="FastAPI",
-            password=settings.FIRST_SUPERUSER_PASSWORD,
-            email="manager@example.com",
-            is_superuser=False,
-        ),
-        "role": "manager",
-    },
-    {
-        "data": IUserCreate(
-            first_name="User",
-            last_name="FastAPI",
-            password=settings.FIRST_SUPERUSER_PASSWORD,
-            email="user@example.com",
-            is_superuser=False,
-        ),
-        "role": "user",
-    },
-]
 
 
 async def init_db(db_session: AsyncSession) -> None:
@@ -77,12 +36,12 @@ async def init_db(db_session: AsyncSession) -> None:
                     id=idx,
                     vector=vector,
                     payload={
-                        "ProductId": row["ProductId"],
-                        "UserId": row["UserId"],
-                        "Score": row["Score"],
-                        "Summary": row["Summary"],
-                        "Text": row["Text"],
-                        "combined": row["combined"],
+                        "product_id": row["ProductId"],
+                        "user_id": row["UserId"],
+                        "score": row["Score"],
+                        "summary": row["Summary"],
+                        "page_content": row["Text"],
+                        "metadata": None,
                         "n_tokens": row["n_tokens"],
                     },
                 )

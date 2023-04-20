@@ -1,16 +1,21 @@
-"""Create a ChatVectorDBChain for question/answering."""
-from app.core.config import settings
+"""Create a ConversationalRetrievalChain for question/answering."""
 from langchain.callbacks.base import AsyncCallbackManager
 from langchain.callbacks.tracers import LangChainTracer
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
 from langchain.chains.chat_vector_db.prompts import (CONDENSE_QUESTION_PROMPT,
                                                      QA_PROMPT)
 from langchain.chains.llm import LLMChain
 from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
-from langchain.vectorstores.base import VectorStore
+from langchain.chat_models import ChatOpenAI
+from langchain.vectorstores.base import VectorStore, VectorStoreRetriever
 
+from langchain.schema import Document
+from typing import List
+
+async def aget_relevant_documents(self, query: str) -> List[Document]:
+    return self.get_relevant_documents(query)
+
+VectorStoreRetriever.aget_relevant_documents = aget_relevant_documents
 
 def get_chain(
     vectorstore: VectorStore, question_handler, stream_handler, tracing: bool = False
@@ -29,32 +34,23 @@ def get_chain(
         stream_manager.add_handler(tracer)
 
     question_gen_llm = ChatOpenAI(
-        model_name="gpt-3.5-turbo",
         temperature=0,
         verbose=True,
         callback_manager=question_manager,
-        openai_api_key=settings.OPENAI_API_KEY,
     )
     streaming_llm = ChatOpenAI(
-        model_name="gpt-3.5-turbo",
         streaming=True,
         callback_manager=stream_manager,
         verbose=True,
         temperature=0,
-        openai_api_key=settings.OPENAI_API_KEY,
     )
-
 
     question_generator = LLMChain(
         llm=question_gen_llm, prompt=CONDENSE_QUESTION_PROMPT, callback_manager=manager
     )
-
     doc_chain = load_qa_chain(
         streaming_llm, chain_type="stuff", prompt=QA_PROMPT, callback_manager=manager
     )
-    
-    print("doc_chain: ", doc_chain)
-
 
     qa = ConversationalRetrievalChain(
         retriever=vectorstore.as_retriever(),
