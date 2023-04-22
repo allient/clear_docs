@@ -14,7 +14,7 @@ class JWTBearer(HTTPBearer):
     def __init__(self, jwks: JWKS, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
         self.cognito = boto3.client(
-            'cognito-idp', region_name=settings.AWS_REGION)
+            'cognito-idp', region_name=settings.COGNITO_REGION)
         self.kid_to_jwk = {jwk["kid"]: jwk for jwk in jwks.keys}
 
     def verify_jwk_token(self, jwt_credentials: JWTAuthorizationCredentials) -> bool:
@@ -59,6 +59,7 @@ class JWTBearer(HTTPBearer):
                     response = self.cognito.get_user(
                         AccessToken=jwt_token
                     )
+                    print("response: ", response)
                 except self.cognito.exceptions.NotAuthorizedException as e:
                     print(f"Error in get_user: {e.__str__()}")
                     raise HTTPException(

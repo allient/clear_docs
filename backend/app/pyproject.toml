@@ -34,7 +34,7 @@ ignore = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
 alembic = "1.8.1"
-fastapi = {extras = ["all"], version = "^0.95.0"}
+fastapi = {extras = ["all"], version = "^0.95.1"}
 sqlmodel = "^0.0.8"
 python-jose = "^3.3.0"
 cryptography = "36.0.2"
@@ -53,11 +53,9 @@ tiktoken = "^0.3.3"
 qdrant-client = "^1.1.4"
 pandas = "^2.0.0"
 fastapi-limiter = "^0.1.5"
-supertokens-python = "^0.12.6"
 langchain = "^0.0.143"
 easy-auth = {extras = ["client"], version = "^2.0.1"}
-pydbantic = "^0.0.41"
-boto3 = "^1.26.118"
+aiobotocore = {extras = ["boto3"], version = "^2.5.0"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^5.2"

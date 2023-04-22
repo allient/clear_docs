@@ -1,37 +1,23 @@
 from collections.abc import AsyncGenerator
 from uuid import UUID
+from fastapi import Depends
 
 import requests
 from app.utils.neural_searcher import NeuralSearcher
-from fastapi import Depends, HTTPException, Request, status
-from app.utils.token import get_valid_tokens
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
 from app.models.user_model import User
-from pydantic import ValidationError
 from app import crud
-from app.core import security
 from app.core.config import settings
 from app.db.session import SessionLocal
 from qdrant_client import QdrantClient
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.common_schema import IMetaGeneral, TokenType
 import redis.asyncio as aioredis
 from redis.asyncio import Redis
-from app.utils.auth_cookies import OAuth2PasswordBearerWithCookie
-from supertokens_python.recipe.session import SessionContainer
-from supertokens_python.recipe.session.framework.fastapi import verify_session
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 
-from backend.app.app.auth.JWTBearer import JWTBearer
-from backend.app.app.auth.auth_schema import JWKS
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
-)
-
-oauth2_scheme = OAuth2PasswordBearerWithCookie(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
 )
 
@@ -74,14 +60,6 @@ def get_chat_openai() -> ChatOpenAI:
     return chat
 
 
-def get_auth():
-    jwks = JWKS.parse_obj(
-        requests.get(
-            f"{settings.COGNITO_URL}/{settings.COGNITO_POOL_ID}/.well-known/jwks.json"
-        ).json()
-    )
-    return JWTBearer(jwks)
-
 
 def get_neural_searcher(collection_name: str) -> NeuralSearcher:
     def get_searcher() -> NeuralSearcher:
@@ -99,14 +77,6 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
 
 
 async def get_current_user(
-    _request=Depends(oauth2_scheme),
-    session_: SessionContainer = Depends(verify_session()),
-) -> User:
-    user_id: UUID = session_.get_user_id()
-    user: User = await crud.user.get(id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return user
+    _request=Depends(reusable_oauth2),
+):
+    pass
