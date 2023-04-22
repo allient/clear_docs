@@ -15,6 +15,16 @@ services:
     depends_on:
       - database_cdocs
 
+  # easyauth_cdocs:
+  #   image: joshjamison/easyauth:2.0.1
+  #   container_name: easyauth_cdocs
+  #   restart: always
+  #   volumes:
+  #     - ./easyauth:/mnt/easyauth
+  #   ports:
+  #     - 8220:8220
+  #   env_file: ".env"    
+
   database_cdocs:
     image: bitnami/postgresql:13.3.0
     restart: always

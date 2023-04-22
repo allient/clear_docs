@@ -59,12 +59,12 @@ async def user_id_identifier(request: Request):
 
     if request.scope["type"] == "websocket":
         return request.scope["path"]
-        
+
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0]
 
-    ip = request.client.host    
+    ip = request.client.host
     return ip + ":" + request.scope["path"]
 
 
@@ -142,7 +142,6 @@ app.add_middleware(
 )
 app.add_middleware(GlobalsMiddleware)
 
-
 init(
     app_info=InputAppInfo(
         app_name="clear-docs",
@@ -187,6 +186,10 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["Content-Type"] + get_all_cors_headers(),
     )
 
+# grants access to only specified users
+@app.auth.get('/', users=['jane'])
+async def root():
+    return f"I am root"
 
 @app.get("/", dependencies=[Depends(RateLimiter(times=100, hours=24))])
 async def root():
@@ -199,7 +202,7 @@ async def root():
 @app.websocket("/chat/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
     await websocket.accept()
-    ws_ratelimit = WebSocketRateLimiter(times=2, hours=24)
+    ws_ratelimit = WebSocketRateLimiter(times=200, hours=24)
     vector_client = get_sync_qdrant_client()
     embeddings = OpenAIEmbeddings()
     vectorstore = Qdrant(
@@ -223,7 +226,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
             await ws_ratelimit(websocket)
             user_message = IUserMessage.parse_obj(data)
             user_message.user_id = user_id
-            
+
             resp = IChatResponse(
                 sender="you",
                 message=user_message.message,
@@ -262,7 +265,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
                 message_id="",
                 id="",
                 sender="bot",
-                message="Sorry, something went wrong. Try again.",
+                message="Sorry, something went wrong. Your user limit of api usages has been reached.",
                 type="error",
             )
             await websocket.send_json(resp.dict())

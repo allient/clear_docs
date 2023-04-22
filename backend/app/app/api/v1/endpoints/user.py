@@ -15,12 +15,15 @@ from app.schemas.user_schema import (
 )
 from fastapi_pagination import Params
 
+from backend.app.app.api.deps import get_auth
+
 router = APIRouter()
 
 
 @router.get("/list")
 async def read_users_list(
     params: Params = Depends(),
+    val = Depends(get_auth)
 ) -> IGetResponsePaginated[IUserRead]:
     """
     Retrieve users. Requires admin or manager role

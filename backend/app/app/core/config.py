@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     QDRANT_CLOUD_API_KEY: str
     SUPERTOKENS_CORE_URI: str
     SUPERTOKENS_CORE_API_KEY: str
+    COGNITO_URL: str
+    COGNITO_POOL_ID: str
+    AWS_REGION: str
     DB_POOL_SIZE = 83
     WEB_CONCURRENCY = 9
     POOL_SIZE = max(DB_POOL_SIZE // WEB_CONCURRENCY, 5)

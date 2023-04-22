@@ -7,6 +7,7 @@ import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { BlogsIcon, CelebrateIcon, GuideIcon, SeparatorLine, SignOutIcon } from "../assets/images";
 import Image from "next/image";
 import { recipeDetails } from "../config/frontendConfig";
+import ChatRoom from "../components/chat-room";
 
 interface ILink {
     name: string;
@@ -62,6 +63,10 @@ function ProtectedPage() {
                 <title>SuperTokens 💫</title>
                 <link rel="icon" href="/favicon.ico" />
             </Head>
+            <section>
+                <ChatRoom />
+            </section>
+
             <div className={styles.mainContainer}>
                 <div className={`${styles.topBand} ${styles.successTitle} ${styles.bold500}`}>
                     <Image src={CelebrateIcon} alt="Login successful" className={styles.successIcon} /> Login successful

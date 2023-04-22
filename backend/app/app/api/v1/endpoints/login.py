@@ -22,25 +22,6 @@ from fastapi_limiter.depends import RateLimiter
 
 router = APIRouter()
 
-
-# @router.post(
-#     "/change_password",
-#     dependencies=[
-#         Depends(RateLimiter(times=200, hours=24)),
-#     ],
-# )
-# async def change_password(
-#     current_password: str = Body(...),
-#     new_password: str = Body(...),
-#     current_user=Depends(get_current_user),
-# ) -> IPostResponseBase[str]:
-#     """
-#     Change password
-#     """
-#     print("current_user", current_user)
-#     return create_response(data="", message="New password generated")
-
-
 @router.post("/access-token")
 async def login_access_token(
     response: Response,
