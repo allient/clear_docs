@@ -1,3 +1,4 @@
+from uuid import UUID
 from app.schemas.user_schema import IUserCreate, IUserUpdate
 from app.models.user_model import User
 from app.core.security import verify_password, get_password_hash
@@ -15,6 +16,17 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
         db_session = db_session or super().get_db().session
         users = await db_session.execute(select(User).where(User.email == email))
         return users.scalar_one_or_none()
+    
+    async def get_by_id_active(
+        self, *, id: UUID
+    ) -> User | None:
+        user = await super().get(id=id)
+        if not user: 
+            return None
+        if user.is_active == False:
+            return None
+        
+        return user
 
     async def create_with_role(
         self, *, obj_in: IUserCreate, db_session: AsyncSession | None = None

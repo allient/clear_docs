@@ -1,5 +1,5 @@
 import logging
-from uuid import UUID
+from uuid import UUID, uuid4
 from app.api.deps import get_redis_client, get_sync_qdrant_client
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app import crud
@@ -106,13 +106,13 @@ async def root():
     return {"message": "Hello World"}
 
 
-active_connections = {}
-
 @app.websocket("/chat/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
-    global active_connections
+async def websocket_endpoint(websocket: WebSocket, user_id: UUID):    
+    session_id = str(uuid4())
+    key: str = f'user_id:{user_id}:session:{session_id}'    
     await websocket.accept()
-    ws_ratelimit = WebSocketRateLimiter(times=2, hours=24)
+    redis_client = await get_redis_client()
+    ws_ratelimit = WebSocketRateLimiter(times=200, hours=24)
     vector_client = get_sync_qdrant_client()
     embeddings = OpenAIEmbeddings()
     vectorstore = Qdrant(
@@ -130,12 +130,14 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
     # qa_chain = get_chain(vectorstore, question_handler, stream_handler, tracing=True)
 
     async with db():
-        user = await crud.user.get(id=user_id)
+        user = await crud.user.get_by_id_active(id=user_id)
         if user != None:            
-            active_connections[user_id] = websocket            
+            await redis_client.set(key, str(websocket))
     
-    if user_id not in active_connections:
-        await websocket.send_text(f"Error: User ID '{user_id}' not found.")
+    
+    active_connection = await redis_client.get(key)
+    if active_connection is None:
+        await websocket.send_text(f"Error: User ID '{user_id}' not found or inactive.")
         await websocket.close()
     else:
         while True:
@@ -188,8 +190,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
                     type="error",
                 )
                 await websocket.send_json(resp.dict())
-            finally:
-                del active_connections[user_id]
+        
+        # Remove the live connection from Redis
+        await redis_client.delete(key)
+        
 
 
 # Add Routers
