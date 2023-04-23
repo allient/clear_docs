@@ -2,6 +2,7 @@ import logging
 from uuid import UUID
 from app.api.deps import get_redis_client, get_sync_qdrant_client
 from app.schemas.common_schema import IChatResponse, IUserMessage
+from app import crud
 from app.utils.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
 from app.utils.query_data import get_chain
 from app.auth.decode_verify_jwt import verify_cognito_token
@@ -16,7 +17,7 @@ from fastapi import (
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router as api_router_v1
-from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
+from fastapi_async_sqlalchemy import SQLAlchemyMiddleware, db
 from contextlib import asynccontextmanager
 from app.utils.fastapi_globals import GlobalsMiddleware
 from app.core.config import settings
@@ -25,6 +26,8 @@ from fastapi_limiter.depends import RateLimiter
 from langchain.vectorstores import Qdrant
 from langchain.embeddings.openai import OpenAIEmbeddings
 from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
+from app.models.user_model import User
+from app.utils.exceptions.common_exception import IdNotFoundException
 
 
 async def user_id_identifier(request: Request):
@@ -103,10 +106,13 @@ async def root():
     return {"message": "Hello World"}
 
 
+active_connections = {}
+
 @app.websocket("/chat/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
+    global active_connections
     await websocket.accept()
-    ws_ratelimit = WebSocketRateLimiter(times=200, hours=24)
+    ws_ratelimit = WebSocketRateLimiter(times=2, hours=24)
     vector_client = get_sync_qdrant_client()
     embeddings = OpenAIEmbeddings()
     vectorstore = Qdrant(
@@ -123,56 +129,67 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
     # Ensure `langchain-server` is running
     # qa_chain = get_chain(vectorstore, question_handler, stream_handler, tracing=True)
 
-    while True:
-        try:
-            # Receive and send back the client message
-            data = await websocket.receive_json()
-            await ws_ratelimit(websocket)
-            user_message = IUserMessage.parse_obj(data)
-            user_message.user_id = user_id
+    async with db():
+        user = await crud.user.get(id=user_id)
+        if user != None:            
+            active_connections[user_id] = websocket            
+    
+    if user_id not in active_connections:
+        await websocket.send_text(f"Error: User ID '{user_id}' not found.")
+        await websocket.close()
+    else:
+        while True:
+            try:
+                # Receive and send back the client message
+                data = await websocket.receive_json()
+                await ws_ratelimit(websocket)
+                user_message = IUserMessage.parse_obj(data)
+                user_message.user_id = user_id
 
-            resp = IChatResponse(
-                sender="you",
-                message=user_message.message,
-                type="stream",
-                message_id=str(uuid7()),
-                id=str(uuid7()),
-            )
-            await websocket.send_json(resp.dict())
+                resp = IChatResponse(
+                    sender="you",
+                    message=user_message.message,
+                    type="stream",
+                    message_id=str(uuid7()),
+                    id=str(uuid7()),
+                )
+                await websocket.send_json(resp.dict())
 
-            # # Construct a response
-            start_resp = IChatResponse(
-                sender="bot", message="", type="start", message_id="", id=""
-            )
-            await websocket.send_json(start_resp.dict())
+                # # Construct a response
+                start_resp = IChatResponse(
+                    sender="bot", message="", type="start", message_id="", id=""
+                )
+                await websocket.send_json(start_resp.dict())
 
-            result = await qa_chain.acall(
-                {"question": user_message.message, "chat_history": chat_history}
-            )
-            chat_history.append((user_message.message, result["answer"]))
-            question_handler.update_message_id()
-            stream_handler.update_message_id()
-            end_resp = IChatResponse(
-                sender="bot",
-                message="",
-                type="end",
-                message_id=str(uuid7()),
-                id=str(uuid7()),
-            )
-            await websocket.send_json(end_resp.dict())
-        except WebSocketDisconnect:
-            logging.info("websocket disconnect")
-            break
-        except Exception as e:
-            logging.error(e)
-            resp = IChatResponse(
-                message_id="",
-                id="",
-                sender="bot",
-                message="Sorry, something went wrong. Your user limit of api usages has been reached.",
-                type="error",
-            )
-            await websocket.send_json(resp.dict())
+                result = await qa_chain.acall(
+                    {"question": user_message.message, "chat_history": chat_history}
+                )
+                chat_history.append((user_message.message, result["answer"]))
+                question_handler.update_message_id()
+                stream_handler.update_message_id()
+                end_resp = IChatResponse(
+                    sender="bot",
+                    message="",
+                    type="end",
+                    message_id=str(uuid7()),
+                    id=str(uuid7()),
+                )
+                await websocket.send_json(end_resp.dict())
+            except WebSocketDisconnect:
+                logging.info("websocket disconnect")
+                break
+            except Exception as e:
+                logging.error(e)
+                resp = IChatResponse(
+                    message_id="",
+                    id="",
+                    sender="bot",
+                    message="Sorry, something went wrong. Your user limit of api usages has been reached.",
+                    type="error",
+                )
+                await websocket.send_json(resp.dict())
+            finally:
+                del active_connections[user_id]
 
 
 # Add Routers

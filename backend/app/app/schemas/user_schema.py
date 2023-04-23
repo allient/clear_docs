@@ -3,6 +3,7 @@ from uuid import UUID
 from enum import Enum
 
 from app.models.user_model import UserBase
+from app.models.user_model import IRoleEnum
 
 
 class IUserCreate(UserBase):
@@ -17,6 +18,7 @@ class IUserUpdate(UserBase):
 
 class IUserRead(UserBase):
     id: UUID
+    role: IRoleEnum
 
 
 class IUserStatus(str, Enum):

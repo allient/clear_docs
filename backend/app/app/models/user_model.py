@@ -7,6 +7,9 @@ from sqlalchemy_utils import ChoiceType
 from pydantic import EmailStr
 from uuid import UUID
 
+class IRoleEnum(str, Enum):
+    admin = "admin"
+    user = "user"
 
 class UserBase(SQLModel):
     first_name: str
@@ -15,8 +18,11 @@ class UserBase(SQLModel):
         nullable=True, index=True, sa_column_kwargs={"unique": True}
     )
     is_active: bool = Field(default=True)
-    is_superuser: bool = Field(default=False)
+    is_superuser: bool = Field(default=False)    
 
 
 class User(BaseUUIDModel, UserBase, table=True):
-    pass
+    role: IRoleEnum = Field(
+        default=IRoleEnum.user,
+        sa_column=Column(ChoiceType(IRoleEnum, impl=String())),
+    )
