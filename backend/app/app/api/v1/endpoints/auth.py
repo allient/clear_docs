@@ -11,6 +11,7 @@ from app.schemas.response_schema import create_response
 from aiobotocore.session import get_session
 from app.core.config import settings
 from aiobotocore.config import AioConfig
+from fastapi_limiter.depends import RateLimiter
 
 
 router = APIRouter()
@@ -27,19 +28,9 @@ async def login_access_token(
     return {
         "access_token": response["AccessToken"],
         "token_type": response["TokenType"],
-        "refresh_token": response["RefreshToken"]
+        "refresh_token": response["RefreshToken"],
     }
 
-
-@router.post("/login")
-async def login(
-    current_user: User = Depends(get_current_user)
-) -> dict[str, str]:
-    """
-    OAuth2 compatible token login, get an access token for future requests
-    """
-    print(current_user)
-    return {}
 
 @router.post("/sign_up")
 async def sign_up(
@@ -54,21 +45,28 @@ async def sign_up(
 
     session = get_session()
     async with session.create_client(
-            "cognito-idp",
-            region_name=settings.COGNITO_REGION,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            config=AioConfig(max_pool_connections=128),
-        ) as client:
-            try:
-                auth_response = await client.admin_get_user(
-                    UserPoolId=settings.COGNITO_POOL_ID,
-                    Username=str(new_user.id), 
-                )
-                email = next((attr['Value'] for attr in auth_response['UserAttributes'] if attr['Name'] == 'email'), None)
-                new_user.email = email
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"{e}")
+        "cognito-idp",
+        region_name=settings.COGNITO_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        config=AioConfig(max_pool_connections=128),
+    ) as client:
+        try:
+            auth_response = await client.admin_get_user(
+                UserPoolId=settings.COGNITO_POOL_ID,
+                Username=str(new_user.id),
+            )
+            email = next(
+                (
+                    attr["Value"]
+                    for attr in auth_response["UserAttributes"]
+                    if attr["Name"] == "email"
+                ),
+                None,
+            )
+            new_user.email = email
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"{e}")
 
-    current_user = await crud.user.create(obj_in=new_user)    
+    current_user = await crud.user.create(obj_in=new_user)
     return create_response(data=current_user)

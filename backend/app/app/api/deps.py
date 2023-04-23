@@ -25,7 +25,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+    tokenUrl=f"{settings.API_V1_STR}/auth/access-token"
 )
 
 
@@ -100,7 +100,7 @@ def get_user_id(token: str = Depends(reusable_oauth2)) -> dict:
     
     return user_id
 
-def get_current_user(token: str = Depends(reusable_oauth2)) -> dict:
+async def get_current_user(token: str = Depends(reusable_oauth2)) -> dict:
     if not token:
         raise HTTPException(status_code=401, detail='You missed the bearer token')
     try:
@@ -109,10 +109,15 @@ def get_current_user(token: str = Depends(reusable_oauth2)) -> dict:
         
         # Get the user attributes from the decoded token            
         user_id = decoded_token["sub"]
-        print("user_id", user_id)
+        user: User = await crud.user.get(id=user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not user.is_active:
+            raise HTTPException(status_code=400, detail="Inactive user")        
         
     except Exception as e:
         print(e)
         raise HTTPException(status_code=401, detail=f"{e}")
     
-    return ''
+    return user

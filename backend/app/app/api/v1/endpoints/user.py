@@ -17,44 +17,16 @@ from fastapi_pagination import Params
 
 from app.auth.deps import get_auth
 from app.auth.auth_schema import JWTAuthorizationCredentials
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
 
-@router.get("/list")
-async def read_users_list(
-    params: Params = Depends(),    
-) -> IGetResponsePaginated[IUserRead]:
-    """
-    Retrieve users. Requires admin or manager role
-
-    Required roles:
-    - admin
-    - manager
-    """
-    users = await crud.user.get_multi_paginated(params=params)
-    return create_response(data=users)
-
-
-@router.get("/{user_id}")
-async def get_user_by_id(
-    user: User = Depends(user_deps.is_valid_user),
+@router.get("")
+async def get_my_data(
+    current_user: User = Depends(get_current_user),
 ) -> IGetResponseBase[IUserRead]:
     """
-    Gets a user by his/her id
-
-    Required roles:
-    - admin
-    - manager
+    Gets my user profile information
     """
-    return create_response(data=user)
-
-
-# @router.get("")
-# async def get_my_data(
-#     current_user: User = Depends(deps.get_current_user()),
-# ) -> IGetResponseBase[IUserRead]:
-#     """
-#     Gets my user profile information
-#     """
-#     return create_response(data=current_user)
+    return create_response(data=current_user)

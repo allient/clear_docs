@@ -4,6 +4,7 @@ from app.api.deps import get_redis_client, get_sync_qdrant_client
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
 from app.utils.query_data import get_chain
+from app.auth.decode_verify_jwt import verify_cognito_token
 from app.utils.uuid6 import uuid7
 from fastapi import (
     Depends,
@@ -28,7 +29,18 @@ from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
 
 async def user_id_identifier(request: Request):
     if request.scope["type"] == "http":
-        pass
+        # Retrieve the Authorization header from the request
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header != None:
+            # Check that the header is in the correct format
+            header_parts = auth_header.split()
+            if len(header_parts) == 2 and header_parts[0].lower() == "bearer":
+                token = header_parts[1]
+                decoded_token = verify_cognito_token(token)        
+                # Get the user attributes from the decoded token            
+                user_id = decoded_token["sub"]
+                return user_id
 
     if request.scope["type"] == "websocket":
         return request.scope["path"]
@@ -46,7 +58,7 @@ async def lifespan(app: FastAPI):
     # Startup
     # Load your API key from an environment variable or secret management service
     redis_client = await get_redis_client()
-    await FastAPILimiter.init(redis_client)
+    await FastAPILimiter.init(redis_client, identifier=user_id_identifier)
     print("startup fastapi")
     yield
     await FastAPILimiter.close()
