@@ -1,7 +1,13 @@
+import base64
 from collections.abc import AsyncGenerator
+import json
+from urllib.request import urlopen
 from uuid import UUID
-from fastapi import Depends
-
+from app.auth.decode_verify_jwt import verify_cognito_token
+from fastapi import Depends, HTTPException
+import jwt
+import rsa
+from app.core import security
 import requests
 from app.utils.neural_searcher import NeuralSearcher
 from fastapi.security import OAuth2PasswordBearer
@@ -15,6 +21,7 @@ import redis.asyncio as aioredis
 from redis.asyncio import Redis
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -76,7 +83,36 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
     return get_searcher
 
 
-async def get_current_user(
-    _request=Depends(reusable_oauth2),
-):
-    pass
+
+def get_user_id(token: str = Depends(reusable_oauth2)) -> dict:
+    if not token:
+        raise HTTPException(status_code=401, detail='You missed the bearer token')
+    try:
+        # Decode and verify the token using decode-verify-jwt
+        decoded_token = verify_cognito_token(token)
+        
+        # Get the user attributes from the decoded token            
+        user_id = decoded_token["sub"]
+        
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail=f"{e}")
+    
+    return user_id
+
+def get_current_user(token: str = Depends(reusable_oauth2)) -> dict:
+    if not token:
+        raise HTTPException(status_code=401, detail='You missed the bearer token')
+    try:
+        # Decode and verify the token using decode-verify-jwt
+        decoded_token = verify_cognito_token(token)
+        
+        # Get the user attributes from the decoded token            
+        user_id = decoded_token["sub"]
+        print("user_id", user_id)
+        
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail=f"{e}")
+    
+    return ''
