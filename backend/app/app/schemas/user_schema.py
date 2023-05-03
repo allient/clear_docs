@@ -7,7 +7,7 @@ from app.models.user_model import IRoleEnum
 
 
 class IUserCreate(UserBase):
-    id: UUID
+    pass
 
 
 # All these fields are optional

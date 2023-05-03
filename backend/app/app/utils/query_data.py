@@ -59,3 +59,47 @@ def get_chain(
         callback_manager=manager,
     )
     return qa
+
+
+def get_chat_chain(
+    question_handler, stream_handler, tracing: bool = False
+) -> ConversationalRetrievalChain:
+    """Create a ConversationalRetrievalChain for question/answering."""
+    # Construct a ConversationalRetrievalChain with a streaming llm for combine docs
+    # and a separate, non-streaming llm for question generation
+    manager = AsyncCallbackManager([])
+    question_manager = AsyncCallbackManager([question_handler])
+    stream_manager = AsyncCallbackManager([stream_handler])
+    if tracing:
+        tracer = LangChainTracer()
+        tracer.load_default_session()
+        manager.add_handler(tracer)
+        question_manager.add_handler(tracer)
+        stream_manager.add_handler(tracer)
+
+    question_gen_llm = ChatOpenAI(
+        temperature=0,
+        verbose=True,
+        callback_manager=question_manager,
+    )
+    streaming_llm = ChatOpenAI(
+        streaming=True,
+        callback_manager=stream_manager,
+        verbose=True,
+        temperature=0,
+    )
+
+    question_generator = LLMChain(
+        llm=question_gen_llm, prompt=CONDENSE_QUESTION_PROMPT, callback_manager=manager
+    )
+    doc_chain = load_qa_chain(
+        streaming_llm, chain_type="stuff", prompt=QA_PROMPT, callback_manager=manager
+    )
+
+    qa = ConversationalRetrievalChain(
+        retriever=vectorstore.as_retriever(),
+        combine_docs_chain=doc_chain,
+        question_generator=question_generator,
+        callback_manager=manager,
+    )
+    return qa

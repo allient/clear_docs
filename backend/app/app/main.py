@@ -4,7 +4,7 @@ from app.api.deps import get_redis_client, get_sync_qdrant_client
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app import crud
 from app.utils.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
-from app.utils.query_data import get_chain
+from app.utils.query_data import get_chain, get_chat_chain
 from app.auth.decode_verify_jwt import verify_cognito_token
 from app.utils.uuid6 import uuid7
 from fastapi import (
@@ -95,10 +95,11 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
         allow_credentials=True,
         allow_methods=["*"],
+        allow_headers=["*"],
     )
 
 
-@app.get("/", dependencies=[Depends(RateLimiter(times=100, hours=24))])
+@app.get("/")
 async def root():
     """
     An example "Hello world" FastAPI route.
@@ -124,7 +125,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
     question_handler = QuestionGenCallbackHandler(websocket)
     stream_handler = StreamingLLMCallbackHandler(websocket)
     chat_history = []
+    # qa_chain = get_chain(vectorstore, question_handler, stream_handler)
     qa_chain = get_chain(vectorstore, question_handler, stream_handler)
+    
     # Use the below line instead of the above line to enable tracing
     # Ensure `langchain-server` is running
     # qa_chain = get_chain(vectorstore, question_handler, stream_handler, tracing=True)

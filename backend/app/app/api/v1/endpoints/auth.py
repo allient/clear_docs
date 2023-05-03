@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.deps import authenticate_user
@@ -11,7 +12,8 @@ from app.schemas.response_schema import create_response
 from aiobotocore.session import get_session
 from app.core.config import settings
 from aiobotocore.config import AioConfig
-from fastapi_limiter.depends import RateLimiter
+from app.api.deps import get_user_id
+from app.schemas.common_schema import IDecodedToken
 
 
 router = APIRouter()
@@ -35,11 +37,12 @@ async def login_access_token(
 @router.post("/sign_up")
 async def sign_up(
     new_user: IUserCreate,
+    decoded_token: IDecodedToken = Depends(get_user_id)
 ) -> IResponseBase[IUserRead]:
     """
     This Sign up is intended after cognito sign up and requires its id
     """
-    current_user = await crud.user.get(id=new_user.id)
+    current_user = await crud.user.get(id=decoded_token.user_id)
     if current_user != None:
         raise HTTPException(status_code=400, detail=f"This user already exists")
 
@@ -54,7 +57,7 @@ async def sign_up(
         try:
             auth_response = await client.admin_get_user(
                 UserPoolId=settings.COGNITO_POOL_ID,
-                Username=str(new_user.id),
+                Username=str(decoded_token.username),
             )
             email = next(
                 (

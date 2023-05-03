@@ -22,6 +22,7 @@ from redis.asyncio import Redis
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.schemas.common_schema import IDecodedToken
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -84,40 +85,40 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
 
 
 
-def get_user_id(token: str = Depends(reusable_oauth2)) -> dict:
+def get_user_id(token: str = Depends(reusable_oauth2)) -> IDecodedToken:
     if not token:
         raise HTTPException(status_code=401, detail='You missed the bearer token')
     try:
         # Decode and verify the token using decode-verify-jwt
         decoded_token = verify_cognito_token(token)
-        
         # Get the user attributes from the decoded token            
         user_id = decoded_token["sub"]
+        username = decoded_token["username"]
+        
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail=f"{e}")
+        
+    return IDecodedToken(user_id=user_id, username=username)
+
+async def get_current_user(token: str = Depends(reusable_oauth2)) -> User:
+    if not token:
+        raise HTTPException(status_code=401, detail='You missed the bearer token')
+    try:
+        # Decode and verify the token using decode-verify-jwt
+        decoded_token = verify_cognito_token(token)
+        # Get the user attributes from the decoded token            
+        user_id = decoded_token["sub"]
+        user: User = await crud.user.get(id=user_id)
         
     except Exception as e:
         print(e)
         raise HTTPException(status_code=401, detail=f"{e}")
     
-    return user_id
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
 
-async def get_current_user(token: str = Depends(reusable_oauth2)) -> dict:
-    if not token:
-        raise HTTPException(status_code=401, detail='You missed the bearer token')
-    try:
-        # Decode and verify the token using decode-verify-jwt
-        decoded_token = verify_cognito_token(token)
-        
-        # Get the user attributes from the decoded token            
-        user_id = decoded_token["sub"]
-        user: User = await crud.user.get(id=user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not user.is_active:
-            raise HTTPException(status_code=400, detail="Inactive user")        
-        
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=401, detail=f"{e}")
+    if user.is_active is False: 
+        raise HTTPException(status_code=400, detail="Inactive user")    
     
     return user

@@ -72,6 +72,10 @@ class IChatResponse(BaseModel):
 
 class IUserMessage(BaseModel):
     """User message schema."""
-
     user_id: UUID | None
     message: str
+
+class IDecodedToken(BaseModel):
+    """Decoded token schema."""
+    user_id: UUID
+    username: str|UUID

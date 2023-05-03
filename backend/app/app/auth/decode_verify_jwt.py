@@ -59,7 +59,7 @@ def verify_cognito_token(token):
     if time.time() > claims['exp']:
         return False
     # and the Audience  (use claims['client_id'] if verifying an access token)
-    if claims['client_id'] != app_client_id:
-        return False
+    #if claims['client_id'] != app_client_id:
+    #    return False
     # now we can use the claims
     return claims
