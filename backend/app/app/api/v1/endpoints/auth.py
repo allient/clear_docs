@@ -42,39 +42,10 @@ async def sign_up(
     """
     This Sign up is intended after cognito sign up and requires its id
     """
-    print("decoded_token", decoded_token)
-    current_user = await crud.user.get(id=decoded_token.user_id)
+    new_user.email = decoded_token.email    
+    current_user = await crud.user.get_by_email(email=new_user.email)
     if current_user != None:
         raise HTTPException(status_code=400, detail=f"This user already exists")
-
-    session = get_session()
-    async with session.create_client(
-        "cognito-idp",
-        region_name=settings.COGNITO_REGION,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        config=AioConfig(max_pool_connections=128),
-    ) as client:
-        try:
-            auth_response = await client.admin_get_user(
-                UserPoolId=settings.COGNITO_POOL_ID,
-                Username=str(decoded_token.username),
-            )
-            email = next(
-                (
-                    attr["Value"]
-                    for attr in auth_response["UserAttributes"]
-                    if attr["Name"] == "email"
-                ),
-                None,
-            )
-            new_user.email = email
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"{e}")
-
-    # Force user_id to be the same as sub in cognito
-    new_user_sql = User.from_orm(
-        new_user, update={"id": decoded_token.user_id}
-    )
-    current_user = await crud.user.create(obj_in=new_user_sql)
+    
+    current_user = await crud.user.create(obj_in=new_user)
     return create_response(data=current_user)

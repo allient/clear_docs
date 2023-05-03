@@ -23,6 +23,8 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.schemas.common_schema import IDecodedToken
+from aiobotocore.session import get_session
+from aiobotocore.config import AioConfig
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -85,7 +87,7 @@ def get_neural_searcher(collection_name: str) -> NeuralSearcher:
 
 
 
-def get_user_id(token: str = Depends(reusable_oauth2)) -> IDecodedToken:
+async def get_user_id(token: str = Depends(reusable_oauth2)) -> IDecodedToken:
     if not token:
         raise HTTPException(status_code=401, detail='You missed the bearer token')
     try:
@@ -94,14 +96,35 @@ def get_user_id(token: str = Depends(reusable_oauth2)) -> IDecodedToken:
         # Get the user attributes from the decoded token            
         user_id = decoded_token["sub"]
         username = decoded_token["username"]
-        
+        session = get_session()
+        async with session.create_client(
+            "cognito-idp",
+            region_name=settings.COGNITO_REGION,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            config=AioConfig(max_pool_connections=128),
+        ) as client:
+            auth_response = await client.admin_get_user(
+                UserPoolId=settings.COGNITO_POOL_ID,
+                Username=str(username),
+            )
+            email = next(
+                (
+                    attr["Value"]
+                    for attr in auth_response["UserAttributes"]
+                    if attr["Name"] == "email"
+                ),
+                None,
+            )            
     except Exception as e:
         print(e)
         raise HTTPException(status_code=401, detail=f"{e}")
         
-    return IDecodedToken(user_id=user_id, username=username)
+    return IDecodedToken(user_id=user_id, username=username, email=email)
+
 
 async def get_current_user(token: str = Depends(reusable_oauth2)) -> User:
+    user: User | None = None
     if not token:
         raise HTTPException(status_code=401, detail='You missed the bearer token')
     try:
@@ -109,7 +132,28 @@ async def get_current_user(token: str = Depends(reusable_oauth2)) -> User:
         decoded_token = verify_cognito_token(token)
         # Get the user attributes from the decoded token            
         user_id = decoded_token["sub"]
-        user: User = await crud.user.get(id=user_id)
+        username = decoded_token["username"]
+        session = get_session()
+        async with session.create_client(
+            "cognito-idp",
+            region_name=settings.COGNITO_REGION,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            config=AioConfig(max_pool_connections=128),
+        ) as client:
+            auth_response = await client.admin_get_user(
+                UserPoolId=settings.COGNITO_POOL_ID,
+                Username=str(username),
+            )
+            email = next(
+                (
+                    attr["Value"]
+                    for attr in auth_response["UserAttributes"]
+                    if attr["Name"] == "email"
+                ),
+                None,
+            )
+            user = await crud.user.get_by_email(email=email)
         
     except Exception as e:
         print(e)

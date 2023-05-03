@@ -1,6 +1,6 @@
 from uuid import UUID
 from app.utils.uuid6 import uuid7
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, EmailStr
 from enum import Enum
 
 
@@ -79,3 +79,4 @@ class IDecodedToken(BaseModel):
     """Decoded token schema."""
     user_id: UUID
     username: str|UUID
+    email: EmailStr
