@@ -42,6 +42,7 @@ async def sign_up(
     """
     This Sign up is intended after cognito sign up and requires its id
     """
+    print("decoded_token", decoded_token)
     current_user = await crud.user.get(id=decoded_token.user_id)
     if current_user != None:
         raise HTTPException(status_code=400, detail=f"This user already exists")
@@ -71,5 +72,9 @@ async def sign_up(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"{e}")
 
-    current_user = await crud.user.create(obj_in=new_user)
+    # Force user_id to be the same as sub in cognito
+    new_user_sql = User.from_orm(
+        new_user, update={"id": decoded_token.user_id}
+    )
+    current_user = await crud.user.create(obj_in=new_user_sql)
     return create_response(data=current_user)
