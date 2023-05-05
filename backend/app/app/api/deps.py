@@ -25,6 +25,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.schemas.common_schema import IDecodedToken
 from aiobotocore.session import get_session
 from aiobotocore.config import AioConfig
+from pydantic import EmailStr
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -145,7 +146,7 @@ async def get_current_user(token: str = Depends(reusable_oauth2)) -> User:
                 UserPoolId=settings.COGNITO_POOL_ID,
                 Username=str(username),
             )
-            email = next(
+            email: EmailStr = next(
                 (
                     attr["Value"]
                     for attr in auth_response["UserAttributes"]

@@ -17,6 +17,7 @@ class UserBase(SQLModel):
     email: EmailStr = Field(
         nullable=True, index=True, sa_column_kwargs={"unique": True}
     )
+    phone: str | None
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)    
 

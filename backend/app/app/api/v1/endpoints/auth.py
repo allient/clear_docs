@@ -42,6 +42,7 @@ async def sign_up(
     """
     This Sign up is intended after cognito sign up and requires its id
     """
+    print("new_user", new_user)
     new_user.email = decoded_token.email    
     current_user = await crud.user.get_by_email(email=new_user.email)
     if current_user != None:

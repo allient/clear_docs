@@ -14,7 +14,7 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
         self, *, email: str, db_session: AsyncSession | None = None
     ) -> User | None:
         db_session = db_session or super().get_db().session
-        users = await db_session.execute(select(User).where(User.email == email))
+        users = await db_session.execute(select(User).where(User.email == email.lower()))
         return users.scalar_one_or_none()
     
     async def get_by_id_active(
