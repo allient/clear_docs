@@ -2,11 +2,12 @@
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["jonra1993 <jonathan.vargas@jrtec.io>"]
+authors = ["jonra1993 <jon_ra@hotmail.es>"]
+readme = "README.md"
 
 [tool.black]
 line-length = 88
-target-version = [ "py310", "py311" ]
+target-version = [ "py37", "py38", "py39",]
 exclude = "((.eggs | .git | .pytest_cache | build | dist))"
 
 [tool.ruff]
@@ -32,35 +33,38 @@ ignore = [
 "__init__.py" = ["F401"]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-alembic = "1.8.1"
-fastapi = {extras = ["all"], version = "^0.95.1"}
-sqlmodel = "^0.0.8"
-python-jose = "^3.3.0"
-cryptography = "36.0.2"
-passlib = "^1.7.4"
-sqlalchemy-utils = "^0.41.0"
-sqlalchemy = "1.4.28"
-fastapi-pagination = {extras = ["sqlalchemy"], version = "^0.12.1"}
-fastapi-cache2 = "^0.2.1"
-watchfiles = "^0.19.0"
-fastapi-async-sqlalchemy = "0.3.14"
-openai = "^0.27.4"
-redis = "^4.5.4"
-asyncpg = "^0.27.0"
+python = "^3.10"
+aioredis = "^2.0.1"
+alembic = "^1.9.2"
 asyncer = "^0.0.2"
-tiktoken = "^0.3.3"
-qdrant-client = "^1.1.4"
-pandas = "^2.0.0"
-fastapi-limiter = "^0.1.5"
-langchain = "^0.0.143"
-easy-auth = {extras = ["client"], version = "^2.0.1"}
-aiobotocore = {extras = ["boto3"], version = "^2.5.0"}
+asyncpg = "^0.27.0"
+cryptography = "^39.0.0"
+httpx = "^0.23.3"
+passlib = "^1.7.4"
+pillow = "^9.4.0"
+python-jose = "^3.3.0"
+sqlalchemy = "1.4.41"
+sqlmodel = "^0.0.8"
+watchfiles = "^0.18.1"
+fastapi-async-sqlalchemy = "^0.3.12"
+sqlalchemy-utils = "^0.39.0"
+fastapi = {extras = ["all"], version = "^0.95.1"}
+fastapi-cache2 = {extras = ["redis"], version = "^0.2.0"}
+fastapi-pagination = {extras = ["sqlalchemy"], version = "^0.11.2"}
+redis = "^4.4.2"
+botocore = "^1.29.76"
+boto3 = "^1.26.76"
+twilio = "^7.16.4"
+celery = "^5.2.7"
+celery-sqlalchemy-scheduler = "^0.3.0"
+psycopg2-binary = "^2.9.5"
+jinja2= "3.1.2"
+emails = "^0.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^5.2"
 black = "^23.1.0"
-ruff = "^0.0.256"
+ruff = "^0.0.241"
 
 [build-system]
 requires = ["poetry-core"]
